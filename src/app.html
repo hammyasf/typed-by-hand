@@ -1,0 +1,577 @@
+<!doctype html>
+<!-- Typed by Hand app. Deal (design-taste-frontend): palette teal-on-paper (paper ground, ink-teal, like a notary's stamp pad on a writing sheet),
+     pairing epilogue swapped for system faces so the file makes no network request; radius soft; tabs with sliding indicator; stamp and digit motion. -->
+<html lang="en" data-radius="soft">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Typed by Hand</title>
+<meta name="description" content="A writing pad that records every keystroke on your device and gives you a replay, a receipt and a video that show you wrote it.">
+<meta name="theme-color" content="#06525c">
+<meta property="og:title" content="Typed by Hand">
+<meta property="og:description" content="A writing pad that records every keystroke on your device and replays how your text was written.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='14' fill='%2306525c'/%3E%3Crect x='14' y='16' width='36' height='30' rx='6' fill='none' stroke='%23f7f9f8' stroke-width='4'/%3E%3Cpath d='M24 24v14M40 24v14M24 31h16' stroke='%23f7f9f8' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M18 52h28' stroke='%23f7f9f8' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f7f9f8; --surface: #ebf0ee; --card: #ffffff; --ink: #06525c; --muted: #2f737d; --line: #cfdcda;
+  --text: #0f2a2e; --warn: #9a3412; --warn-bg: #fdf0e8; --ok-bg: #e3f0ec;
+  --font-text: ui-sans-serif, -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --font-page: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+  --r: 10px; --r-lg: 16px;
+  --ease: cubic-bezier(.2,.8,.2,1); --ease-enter: cubic-bezier(.22,1,.36,1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 15px/1.5 var(--font-text); display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.skip { position: absolute; left: 12px; top: -60px; z-index: 10; background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: var(--r); text-decoration: none; }
+.skip:focus { top: 12px; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.sheet:focus-within { box-shadow: 0 0 0 2px var(--ink), 0 12px 32px rgba(6,82,92,.08); }
+#pad:focus-visible { outline: none; }
+.mark h1 { margin: 0; font: inherit; }
+
+/* bar */
+.bar { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--bg); }
+.mark { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+.mark svg { width: 28px; height: 28px; flex: none; }
+.doc { flex: 1; display: flex; gap: 8px; min-width: 0; }
+.doc input { flex: 1; min-width: 0; min-height: 44px; border: 1px solid transparent; background: transparent; border-radius: var(--r); padding: 8px 10px; font-weight: 500; }
+.doc input:hover { border-color: var(--line); }
+.doc input:focus { border-color: var(--ink); background: var(--card); outline: none; }
+.doc select { min-height: 44px; border: 1px solid var(--line); background: var(--card); border-radius: var(--r); padding: 8px 10px; max-width: 180px; }
+.btn { appearance: none; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); border-radius: var(--r); padding: 9px 14px; min-height: 40px; font-weight: 500; cursor: pointer; white-space: nowrap;
+  transition: transform 150ms var(--ease), background-color 150ms var(--ease), box-shadow 150ms var(--ease); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.btn--ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover { transform: translateY(-1px); background: #043f47; }
+  .btn--ghost:hover { background: var(--surface); border-color: var(--ink); }
+}
+.btn:active { transform: translateY(1px) scale(.985); transition-duration: 90ms; }
+.btn[disabled] { opacity: .45; pointer-events: none; }
+.btn svg { width: 16px; height: 16px; flex: none; }
+.rec { display: flex; align-items: center; gap: 8px; font: 500 12px/1 var(--font-mono); letter-spacing: .08em; color: var(--muted); white-space: nowrap; }
+.rec i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); transition: background-color 200ms; }
+.rec.on { color: #b42318; }
+.rec.on i { background: #d92d20; animation: lamp 1.2s linear infinite; }
+@keyframes lamp { 50% { opacity: .35; } }
+
+/* desk */
+.desk { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; }
+.sheetwrap { min-height: 0; overflow: auto; padding: 32px 32px 48px; background: var(--surface); }
+.sheet { position: relative; max-width: 760px; min-height: 100%; margin: 0 auto; background: var(--card); border-radius: 4px; box-shadow: 0 1px 2px rgba(6,82,92,.08), 0 12px 32px rgba(6,82,92,.08); }
+.sheet::before { content: ""; position: absolute; left: 56px; top: 0; bottom: 0; width: 1px; background: #f2c9c4; }
+#pad, #view { display: block; width: 100%; min-height: 70vh; padding: 48px 56px 64px 80px; border: 0; background: transparent; resize: none;
+  font: 19px/1.7 var(--font-page); color: var(--text); white-space: pre-wrap; word-wrap: break-word; outline: none; }
+#pad::placeholder { color: #8aa5a8; }
+#view { margin: 0; }
+#view[hidden], #pad[hidden] { display: none; }
+.caret { display: inline-block; width: 2px; height: 1.15em; margin: 0 -1px; vertical-align: -.2em; background: var(--ink); animation: blink 1s steps(1) infinite; }
+.caret.typing { animation: none; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* panel */
+.panel { min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--bg); }
+.tabs { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); margin: 16px 20px 0; padding: 4px; background: var(--surface); border-radius: 999px; }
+.tabs button { position: relative; z-index: 1; border: 0; background: none; min-height: 44px; border-radius: 999px; font-weight: 500; cursor: pointer; color: var(--muted); transition: color 200ms var(--ease); }
+.tabs button[aria-selected="true"] { color: var(--bg); }
+.tabs .ind { position: absolute; z-index: 0; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 3); border-radius: 999px; background: var(--ink); transition: transform 240ms var(--ease); }
+.pane { flex: 1; min-height: 0; overflow: auto; padding: 20px; }
+.pane[hidden] { display: none; }
+.pane { animation: paneIn 200ms var(--ease); }
+@keyframes paneIn { from { opacity: 0; transform: translateY(4px); } }
+.label { font: 500 11px/1.2 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+.cell { background: var(--card); padding: 14px 16px; }
+.cell b { display: block; margin-top: 6px; font: 500 26px/1.1 var(--font-mono); color: var(--ink); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.cell b.tick { animation: tick 260ms var(--ease-enter); }
+@keyframes tick { from { transform: translateY(-4px); opacity: .5; } }
+.block { margin-top: 20px; }
+.bars { display: flex; align-items: flex-end; gap: 3px; height: 72px; margin-top: 10px; padding: 0 2px; border-bottom: 1px solid var(--line); }
+.bars span { flex: 1; min-width: 3px; max-width: 14px; background: var(--ink); border-radius: 2px 2px 0 0; transform-origin: bottom; animation: grow 400ms var(--ease-enter); }
+.bars span.now { background: #3d9aa5; }
+@keyframes grow { from { transform: scaleY(0); } }
+.bars-empty { font-size: 13px; color: var(--muted); align-self: center; margin: auto; }
+.checks { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.checks li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
+.checks svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }
+.note { margin-top: 16px; font-size: 13px; color: var(--muted); }
+
+/* replay */
+.transport { display: flex; align-items: center; gap: 10px; }
+.transport .btn { width: 48px; height: 48px; padding: 0; border-radius: 50%; }
+.transport .btn svg { width: 20px; height: 20px; }
+.clock { font: 500 22px/1 var(--font-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.clock small { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 16px; padding: 4px; background: var(--surface); border-radius: var(--r); }
+.seg button { border: 0; background: none; min-height: 44px; border-radius: 7px; cursor: pointer; font: 500 14px var(--font-mono); color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(6,82,92,.15); }
+input[type=range] { width: 100%; margin-top: 16px; accent-color: var(--ink); height: 32px; }
+
+/* receipt */
+.receipt { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 22px 22px 18px; font: 13px/1.55 var(--font-mono); color: var(--text); overflow: hidden; }
+.receipt.print { animation: print 700ms var(--ease-enter); }
+@keyframes print { from { clip-path: inset(0 0 100% 0); transform: translateY(-12px); } to { clip-path: inset(0 0 0 0); } }
+.receipt h3 { margin: 0; font: 600 15px/1.3 var(--font-text); color: var(--ink); }
+.receipt .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.receipt hr { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
+.receipt .row { display: flex; justify-content: space-between; gap: 12px; }
+.receipt .row span:last-child { font-variant-numeric: tabular-nums; }
+.receipt .fp { word-break: break-all; color: var(--muted); font-size: 11px; }
+.seal { display: flex; align-items: center; gap: 16px; margin-top: 4px; }
+.seal p { margin: 0; font: 13px/1.45 var(--font-text); color: var(--muted); }
+.stamp { flex: none; width: 112px; height: 112px; transform: rotate(-12deg); pointer-events: none; opacity: .92; }
+.stamp.slam { animation: slam 420ms var(--ease-enter) 650ms both; }
+@keyframes slam { from { transform: rotate(-4deg) scale(1.6); opacity: 0; } to { transform: rotate(-12deg) scale(1); opacity: .92; } }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.actions .wide { grid-column: 1 / -1; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 12px); background: var(--text); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity 200ms var(--ease), transform 200ms var(--ease); pointer-events: none; z-index: 9; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+.foot { display: flex; justify-content: space-between; gap: 16px; padding: 8px 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.foot code { font-family: var(--font-mono); }
+
+@media (max-width: 860px) {
+  body { height: auto; }
+  .desk { grid-template-columns: 1fr; }
+  .panel { border-left: 0; border-top: 1px solid var(--line); }
+  .sheetwrap { padding: 16px; }
+  #pad, #view { min-height: 50vh; padding: 28px 20px 40px 40px; font-size: 18px; }
+  .sheet::before { left: 26px; }
+  .bar { flex-wrap: wrap; padding: 10px 16px; }
+  .doc { order: 3; flex-basis: 100%; flex-wrap: wrap; }
+  .doc input { flex-basis: 100%; border-color: var(--line); background: var(--card); }
+  .doc select { flex: 1; max-width: none; min-height: 44px; }
+  .doc .btn { min-height: 44px; }
+  .rec { margin-left: auto; }
+  .foot { flex-direction: column; gap: 2px; padding: 8px 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#pad">Skip to the writing page</a>
+<header class="bar">
+  <div class="mark">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="14" fill="#06525c"/><rect x="14" y="16" width="36" height="30" rx="6" fill="none" stroke="#f7f9f8" stroke-width="4"/><path d="M24 24v14M40 24v14M24 31h16M18 52h28" stroke="#f7f9f8" stroke-width="4" stroke-linecap="round"/></svg>
+    <h1>Typed by Hand<span class="vh">: a writing pad that records how you wrote</span></h1>
+  </div>
+  <div class="doc">
+    <label class="vh" for="title">Page title</label>
+    <input id="title" maxlength="120" autocomplete="off">
+    <label class="vh" for="docs">Open another page</label>
+    <select id="docs"></select>
+    <button class="btn btn--ghost" id="new" type="button">Start a new page</button>
+  </div>
+  <div class="rec" id="rec" aria-live="polite"><i></i><span>READY</span></div>
+</header>
+
+<main class="desk">
+  <div class="sheetwrap" id="sheetwrap">
+    <div class="sheet">
+      <label class="vh" for="pad">Writing page</label>
+      <textarea id="pad" spellcheck="true" placeholder="Start writing. Every keystroke is kept on this device, so you can show how this text was made."></textarea>
+      <pre id="view" hidden aria-label="Replay"></pre>
+    </div>
+  </div>
+
+  <aside class="panel">
+    <div class="tabs" role="tablist">
+      <span class="ind" id="ind"></span>
+      <button role="tab" aria-selected="true" aria-controls="p-live" id="t-live">Live</button>
+      <button role="tab" aria-selected="false" aria-controls="p-replay" id="t-replay">Replay</button>
+      <button role="tab" aria-selected="false" aria-controls="p-receipt" id="t-receipt">Receipt</button>
+    </div>
+
+    <section class="pane" id="p-live" role="tabpanel" aria-labelledby="t-live">
+      <div class="grid">
+        <div class="cell"><span class="label">Writing time</span><b id="s-time">0s</b></div>
+        <div class="cell"><span class="label">Words</span><b id="s-words">0</b></div>
+        <div class="cell"><span class="label">Typed</span><b id="s-typed">0</b></div>
+        <div class="cell"><span class="label">Deleted</span><b id="s-deleted">0</b></div>
+        <div class="cell"><span class="label">Pasted</span><b id="s-pasted">0</b></div>
+        <div class="cell"><span class="label">Pauses</span><b id="s-pauses">0</b></div>
+      </div>
+      <div class="block">
+        <span class="label">Characters per minute of writing</span>
+        <div class="bars" id="bars"></div>
+      </div>
+      <div class="block">
+        <span class="label">What the record shows</span>
+        <ul class="checks" id="checks"></ul>
+      </div>
+      <p class="note">The record shows how the text was made, keystroke by keystroke. It cannot show where the ideas came from.</p>
+    </section>
+
+    <section class="pane" id="p-replay" role="tabpanel" aria-labelledby="t-replay" hidden>
+      <div class="transport">
+        <button class="btn" id="play" type="button" aria-label="Play replay"></button>
+        <div class="clock"><span id="r-clock">0:00</span><small id="r-of">of 0:00, pauses shortened</small></div>
+      </div>
+      <div class="seg" role="group" aria-label="Replay speed">
+        <button type="button" data-speed="1" aria-pressed="false">1×</button>
+        <button type="button" data-speed="4" aria-pressed="true">4×</button>
+        <button type="button" data-speed="16" aria-pressed="false">16×</button>
+        <button type="button" data-speed="64" aria-pressed="false">64×</button>
+      </div>
+      <input type="range" id="scrub" min="0" max="1000" value="1000" aria-label="Replay position">
+      <p class="note">The page plays back every insert, deletion and paste in order. Pauses over 1.2 seconds are shortened; the receipt keeps their real length.</p>
+    </section>
+
+    <section class="pane" id="p-receipt" role="tabpanel" aria-labelledby="t-receipt" hidden>
+      <div id="receipt"></div>
+      <div class="actions">
+        <button class="btn wide" id="x-file" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 19h14"/></svg>Save replay file</button>
+        <button class="btn btn--ghost" id="x-png" type="button">Save receipt</button>
+        <button class="btn btn--ghost" id="x-video" type="button">Save video</button>
+        <button class="btn btn--ghost wide" id="x-copy" type="button">Copy text</button>
+      </div>
+      <p class="note">The replay file is one HTML page with the full record inside. Anyone can open it in a browser, with no account and no link that expires.</p>
+    </section>
+  </aside>
+</main>
+
+<footer class="foot">
+  <span>Saved in this browser. Nothing is uploaded.</span>
+  <span id="fp-foot"></span>
+</footer>
+<div class="toast" id="toast" role="status"></div>
+
+<script id="core">/*CORE*/</script>
+<script>
+(function () {
+  var T = TBH, $ = function (id) { return document.getElementById(id); };
+  var KEY = 'typedbyhand.v1', docs = load(), doc, prevText = '', pasteNext = false, saveTimer = 0, recTimer = 0, statsRaf = 0;
+  var CHECK = '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#e3f0ec"/><path d="M6 10.5l2.6 2.6L14 7.6" fill="none" stroke="#06525c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var FLAG = '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#fdf0e8"/><path d="M10 5.5v5.5M10 14v.2" stroke="#9a3412" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  var PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg>';
+  var PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></svg>';
+
+  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } }
+  function save() {
+    doc.updated = Date.now();
+    try { localStorage.setItem(KEY, JSON.stringify(docs)); }
+    catch (e) { toast('Browser storage is full. Save a replay file to keep this record.'); }
+  }
+  function saveSoon() { clearTimeout(saveTimer); saveTimer = setTimeout(save, 400); }
+  function newDoc() {
+    var d = { id: Date.now().toString(36), title: 'Untitled page', text: '', ops: [], created: Date.now(), updated: Date.now() };
+    docs.unshift(d); return d;
+  }
+  function open(d) {
+    stopReplay(); doc = d; prevText = d.text;
+    $('pad').value = d.text; $('title').value = d.title;
+    renderDocs(); refresh(true); showTab(currentTab === 'replay' ? 'replay' : currentTab);
+  }
+  function renderDocs() {
+    $('docs').innerHTML = docs.map(function (d) {
+      return '<option value="' + d.id + '"' + (d === doc ? ' selected' : '') + '>' + esc(d.title || 'Untitled page') + '</option>';
+    }).join('');
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove('show'); }, 2600); }
+
+  // recording
+  $('pad').addEventListener('paste', function () { pasteNext = true; });
+  $('pad').addEventListener('drop', function () { pasteNext = true; });
+  $('pad').addEventListener('input', function (e) {
+    var it = e.inputType || '', paste = pasteNext || it === 'insertFromPaste' || it === 'insertFromDrop' || it === 'insertFromPasteAsQuotation';
+    pasteNext = false;
+    var op = T.diff(prevText, this.value, Date.now(), paste);
+    prevText = this.value;
+    if (!op) return;
+    doc.ops.push(op); doc.text = this.value;
+    var rec = $('rec'); rec.classList.add('on'); rec.lastChild.textContent = paste ? 'PASTE LOGGED' : 'RECORDING';
+    clearTimeout(recTimer); recTimer = setTimeout(function () { rec.classList.remove('on'); rec.lastChild.textContent = 'SAVED'; }, 1500);
+    saveSoon();
+    if (!statsRaf) statsRaf = requestAnimationFrame(function () { statsRaf = 0; refresh(false); });
+  });
+  $('title').addEventListener('input', function () { doc.title = this.value; renderDocs(); saveSoon(); });
+  $('docs').addEventListener('change', function () { var id = this.value; open(docs.filter(function (d) { return d.id === id; })[0]); });
+  $('new').addEventListener('click', function () { open(newDoc()); save(); $('pad').focus(); });
+
+  // live stats
+  var last = {};
+  function setNum(id, val) {
+    var el = $(id);
+    if (last[id] === val) return;
+    last[id] = val; el.textContent = val;
+    el.classList.remove('tick'); void el.offsetWidth; el.classList.add('tick');
+  }
+  function refresh(full) {
+    var s = T.stats(doc.ops, doc.text);
+    setNum('s-time', T.dur(s.activeMs)); setNum('s-words', T.fmtInt(s.words));
+    setNum('s-typed', T.fmtInt(s.typed)); setNum('s-deleted', T.fmtInt(s.deleted));
+    setNum('s-pasted', T.fmtInt(s.pasted)); setNum('s-pauses', T.fmtInt(s.pauses));
+    var bins = s.bins.slice(-40), max = Math.max.apply(null, bins.concat([1]));
+    var bars = $('bars');
+    if (!bins.length) bars.innerHTML = '<span class="bars-empty" style="background:none;animation:none">Bars appear as you write</span>';
+    else if (full || bars.children.length !== bins.length || bars.querySelector('.bars-empty')) {
+      bars.innerHTML = bins.map(function (b, i) { return '<span' + (i === bins.length - 1 ? ' class="now"' : '') + ' style="height:' + Math.max(2, b / max * 100) + '%"></span>'; }).join('');
+    } else {
+      for (var i = 0; i < bins.length; i++) bars.children[i].style.height = Math.max(2, bins[i] / max * 100) + '%';
+    }
+    $('checks').innerHTML = doc.ops.length ? s.checks.map(function (c) { return '<li>' + (c.ok ? CHECK : FLAG) + '<span>' + esc(c.label) + '</span></li>'; }).join('')
+      : '<li>' + CHECK + '<span>Nothing written yet on this page</span></li>';
+    $('fp-foot').textContent = doc.ops.length ? T.fmtInt(doc.ops.length) + ' edits recorded on this page' : '';
+    return s;
+  }
+
+  // tabs
+  var currentTab = 'live';
+  ['live', 'replay', 'receipt'].forEach(function (name, i) {
+    $('t-' + name).addEventListener('click', function () { showTab(name); });
+  });
+  function showTab(name) {
+    var names = ['live', 'replay', 'receipt'];
+    currentTab = name;
+    names.forEach(function (n) { $('t-' + n).setAttribute('aria-selected', n === name); $('p-' + n).hidden = n !== name; });
+    $('ind').style.transform = 'translateX(' + names.indexOf(name) * 100 + '%)';
+    if (name === 'replay') enterReplay(); else leaveReplay();
+    if (name === 'receipt') renderReceipt(true);
+    if (name === 'live') refresh(true);
+  }
+
+  // replay
+  var tl = [], total = 0, pos = 0, idx = 0, rtext = '', playing = false, speed = 4, lastFrame = 0, caretAt = 0;
+  var view = $('view'), before = document.createTextNode(''), caret = document.createElement('span'), after = document.createTextNode('');
+  caret.className = 'caret'; view.append(before, caret, after);
+  function enterReplay() {
+    tl = T.timeline(doc.ops); total = tl.length ? tl[tl.length - 1] : 0;
+    $('pad').hidden = true; view.hidden = false;
+    seek(total); $('play').innerHTML = PLAY; $('r-of').textContent = 'of ' + clock(total) + ', pauses shortened';
+  }
+  function leaveReplay() { stopReplay(); view.hidden = true; $('pad').hidden = false; }
+  function clock(ms) { var s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
+  function seek(p) {
+    pos = Math.max(0, Math.min(total, p));
+    var target = 0;
+    while (target < tl.length && tl[target] <= pos) target++;
+    if (target < idx) { rtext = ''; idx = 0; }
+    while (idx < target) { var o = doc.ops[idx]; rtext = T.apply(rtext, o); caretAt = o[1] + o[3].length; idx++; }
+    if (idx === 0) caretAt = 0;
+    before.data = rtext.slice(0, caretAt); after.data = rtext.slice(caretAt);
+    $('r-clock').textContent = clock(pos);
+    $('scrub').value = total ? Math.round(pos / total * 1000) : 1000;
+  }
+  function frame(now) {
+    if (!playing) return;
+    pos += (now - lastFrame) * speed; lastFrame = now;
+    seek(pos); caret.classList.add('typing');
+    var r = caret.getBoundingClientRect(), w = $('sheetwrap'), wr = w.getBoundingClientRect();
+    if (r.bottom > wr.bottom - 40 || r.top < wr.top) w.scrollTop += r.top - wr.top - wr.height / 2;
+    if (pos >= total) { stopReplay(); return; }
+    requestAnimationFrame(frame);
+  }
+  function stopReplay() { playing = false; caret.classList.remove('typing'); $('play').innerHTML = PLAY; $('play').setAttribute('aria-label', 'Play replay'); }
+  $('play').addEventListener('click', function () {
+    if (playing) return stopReplay();
+    if (!doc.ops.length) return toast('Write something first, then replay it.');
+    if (pos >= total) { rtext = ''; idx = 0; seek(0); }
+    playing = true; lastFrame = performance.now(); this.innerHTML = PAUSE; this.setAttribute('aria-label', 'Pause replay');
+    requestAnimationFrame(frame);
+  });
+  $('scrub').addEventListener('input', function () { stopReplay(); seek(this.value / 1000 * total); });
+  document.querySelectorAll('.seg button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      speed = +b.dataset.speed;
+      document.querySelectorAll('.seg button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+    });
+  });
+
+  // receipt
+  var STAMP = { hand: ['TYPED', 'BY HAND'], mixed: ['CHECK THE', 'REPLAY'], pasted: ['MOSTLY', 'PASTED'], broken: ['RECORD', 'BROKEN'], empty: ['NO', 'RECORD'] };
+  var VERDICT = { hand: 'Every check passed. Send the replay file with your text so anyone can watch it being written.',
+    mixed: 'Some checks need a look. The replay shows exactly what happened.', pasted: 'Most of this text arrived by paste.',
+    broken: 'The record does not rebuild this text.', empty: 'Nothing written yet.' };
+  function stampSvg(v) {
+    var c = v === 'hand' ? '#06525c' : '#9a3412', w = STAMP[v];
+    return '<svg class="stamp slam" viewBox="0 0 140 140" aria-label="Stamp: ' + w.join(' ') + '"><g fill="none" stroke="' + c + '"><circle cx="70" cy="70" r="64" stroke-width="5"/><circle cx="70" cy="70" r="55" stroke-width="1.5"/></g>' +
+      '<g fill="' + c + '" font-family="ui-monospace, Menlo, monospace" font-weight="700" text-anchor="middle"><text x="70" y="64" font-size="17" letter-spacing="1">' + w[0] + '</text><text x="70" y="86" font-size="17" letter-spacing="1">' + w[1] + '</text>' +
+      '<text x="70" y="106" font-size="7.5" letter-spacing="1">KEYSTROKE RECORD</text><text x="70" y="40" font-size="8" letter-spacing="2">' + new Date().getFullYear() + '</text></g></svg>';
+  }
+  function dateRange() {
+    if (!doc.ops.length) return '';
+    var a = new Date(doc.ops[0][0]), b = new Date(doc.ops[doc.ops.length - 1][0]);
+    var f = function (d) { return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
+    var t = function (d) { return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); };
+    return f(a) === f(b) ? f(a) + ', ' + t(a) + ' to ' + t(b) : f(a) + ' to ' + f(b);
+  }
+  function receiptRows(s) {
+    return [['Words', T.fmtInt(s.words)], ['Writing time', T.dur(s.activeMs)], ['Sittings', s.sittings], ['Characters typed', T.fmtInt(s.typed)],
+      ['Characters deleted', T.fmtInt(s.deleted)], ['Characters pasted', T.fmtInt(s.pasted)], ['Pauses over 2 s', T.fmtInt(s.pauses)],
+      ['Longest pause', T.dur(s.longestPause)], ['Typing speed', Math.round(s.wpm) + ' wpm']];
+  }
+  var lastFp = '';
+  function renderReceipt(animate) {
+    var s = T.stats(doc.ops, doc.text);
+    var html = '<div class="receipt' + (animate ? ' print' : '') + '"><h3>' + esc(doc.title || 'Untitled page') + '</h3><div class="sub">' + (dateRange() || 'No writing recorded yet') + '</div><hr>' +
+      receiptRows(s).map(function (r) { return '<div class="row"><span>' + r[0] + '</span><span>' + r[1] + '</span></div>'; }).join('') + '<hr>' +
+      s.checks.map(function (c) { return '<div class="row"><span>' + esc(c.label) + '</span><span>' + (c.ok ? 'yes' : 'look') + '</span></div>'; }).join('') +
+      '<hr><div class="seal">' + stampSvg(s.verdict) + '<p>' + VERDICT[s.verdict] + '</p></div><hr><div class="fp" id="fp">Fingerprint: working…</div></div>';
+    $('receipt').innerHTML = html;
+    T.fingerprint(doc.ops, doc.text).then(function (h) { lastFp = h; var el = $('fp'); if (el) el.textContent = 'Fingerprint SHA-256 ' + h.slice(0, 32) + '…'; });
+    return s;
+  }
+
+  // exports
+  function download(name, blob) {
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  }
+  function slug() { return (doc.title || 'page').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'page'; }
+
+  $('x-copy').addEventListener('click', function () {
+    navigator.clipboard.writeText(doc.text).then(function () { toast('Text copied'); }, function () { toast('Copy was blocked by the browser'); });
+  });
+
+  $('x-file').addEventListener('click', function () {
+    if (!doc.ops.length) return toast('Nothing recorded on this page yet.');
+    T.fingerprint(doc.ops, doc.text).then(function (fp) {
+      var data = JSON.stringify({ v: 1, title: doc.title, text: doc.text, ops: doc.ops, fp: fp }).replace(/</g, '\\u003c');
+      var core = $('core').textContent, html = PLAYER.replace('/*CORE*/', function () { return core; }).replace('/*DATA*/', function () { return data; }).replace(/__TITLE__/g, esc(doc.title || 'Untitled page'));
+      download(slug() + '.replay.html', new Blob([html], { type: 'text/html' }));
+      toast('Replay file saved');
+    });
+  });
+
+  // canvas drawing shared by the receipt PNG and the video
+  function wrap(ctx, text, width) {
+    var lines = [];
+    text.split('\n').forEach(function (para) {
+      var words = para.split(/(\s+)/), line = '';
+      words.forEach(function (w) {
+        if (ctx.measureText(line + w).width > width && line) { lines.push(line); line = w.replace(/^\s+/, ''); }
+        else line += w;
+        while (ctx.measureText(line).width > width) { var k = line.length - 1; while (k > 1 && ctx.measureText(line.slice(0, k)).width > width) k--; lines.push(line.slice(0, k)); line = line.slice(k); }
+      });
+      lines.push(line);
+    });
+    return lines;
+  }
+  function drawStamp(ctx, x, y, r, verdict, alpha, scale) {
+    var c = verdict === 'hand' ? '#06525c' : '#9a3412', w = STAMP[verdict];
+    ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); ctx.rotate(-12 * Math.PI / 180); ctx.scale(scale, scale);
+    ctx.strokeStyle = c; ctx.fillStyle = c;
+    ctx.lineWidth = r * .07; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.stroke();
+    ctx.lineWidth = r * .02; ctx.beginPath(); ctx.arc(0, 0, r * .86, 0, 7); ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '700 ' + r * .27 + 'px ui-monospace, Menlo, monospace'; ctx.fillText(w[0], 0, -r * .1); ctx.fillText(w[1], 0, r * .24);
+    ctx.font = '700 ' + r * .12 + 'px ui-monospace, Menlo, monospace'; ctx.fillText('KEYSTROKE RECORD', 0, r * .58);
+    ctx.restore();
+  }
+  var MONO = 'ui-monospace, "SF Mono", Menlo, monospace', SANS = 'ui-sans-serif, -apple-system, "Segoe UI", sans-serif', SERIF = 'ui-serif, "New York", Georgia, serif';
+
+  $('x-png').addEventListener('click', function () {
+    var s = T.stats(doc.ops, doc.text);
+    T.fingerprint(doc.ops, doc.text).then(function (fp) {
+      var rows = receiptRows(s), W = 1080, P = 80, lh = 50, H = P * 2 + 170 + rows.length * lh + 40 + s.checks.length * lh + 160 + 300;
+      var cv = document.createElement('canvas'); cv.width = W; cv.height = H; var ctx = cv.getContext('2d');
+      ctx.fillStyle = '#ebf0ee'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#fff'; roundRect(ctx, 40, 40, W - 80, H - 80, 28); ctx.fill();
+      ctx.fillStyle = '#06525c'; ctx.font = '600 44px ' + SANS; ctx.fillText((doc.title || 'Untitled page').slice(0, 34), P, P + 60);
+      ctx.fillStyle = '#2f737d'; ctx.font = '400 28px ' + MONO; ctx.fillText(dateRange(), P, P + 108);
+      var y = P + 170;
+      dash(ctx, P, y - 30, W - P);
+      ctx.font = '400 30px ' + MONO;
+      rows.forEach(function (r) { ctx.fillStyle = '#0f2a2e'; ctx.textAlign = 'left'; ctx.fillText(r[0], P, y + 10); ctx.textAlign = 'right'; ctx.fillText(String(r[1]), W - P, y + 10); y += lh; });
+      dash(ctx, P, y - 10, W - P); y += 30;
+      s.checks.forEach(function (c) { ctx.fillStyle = c.ok ? '#06525c' : '#9a3412'; ctx.textAlign = 'left'; ctx.fillText((c.ok ? '+ ' : '! ') + c.label, P, y + 10); y += lh; });
+      ctx.textAlign = 'left'; dash(ctx, P, y - 10, W - P);
+      drawStamp(ctx, P + 130, y + 150, 120, s.verdict, .9, 1);
+      ctx.fillStyle = '#2f737d'; ctx.font = '400 26px ' + SANS; wrap(ctx, VERDICT[s.verdict], W - P * 2 - 320).forEach(function (l, k) { ctx.fillText(l, P + 300, y + 120 + k * 38); });
+      y += 300; dash(ctx, P, y - 10, W - P);
+      ctx.fillStyle = '#2f737d'; ctx.font = '400 22px ' + MONO; ctx.fillText('SHA-256 ' + fp.slice(0, 40), P, y + 40); ctx.fillText('made with Typed by Hand', P, y + 76);
+      cv.toBlob(function (b) { download(slug() + '.receipt.png', b); toast('Receipt saved'); }, 'image/png');
+    });
+  });
+  function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  function dash(ctx, x1, y, x2) { ctx.save(); ctx.strokeStyle = '#cfdcda'; ctx.lineWidth = 2; ctx.setLineDash([10, 8]); ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke(); ctx.restore(); }
+
+  // video: the replay drawn into a 1080x1920 canvas and recorded in real time (about 17 s)
+  $('x-video').addEventListener('click', function () {
+    if (!doc.ops.length) return toast('Nothing recorded on this page yet.');
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return toast('This browser cannot record video. Try Chrome or Safari.');
+    var btn = this; btn.disabled = true; btn.textContent = 'Recording 0%';
+    var s = T.stats(doc.ops, doc.text), ops = doc.ops, ttl = T.timeline(ops), TT = ttl[ttl.length - 1] || 1, PLAYMS = 13000, HOLD = 3200;
+    var sp = Math.max(1, TT / PLAYMS), playMs = TT / sp;
+    var W = 1080, H = 1920, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    var ctx = cv.getContext('2d'), mime = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].filter(function (m) { return MediaRecorder.isTypeSupported(m); })[0];
+    var rec = new MediaRecorder(cv.captureStream(30), { mimeType: mime, videoBitsPerSecond: 6e6 }), chunks = [];
+    rec.ondataavailable = function (e) { if (e.data.size) chunks.push(e.data); };
+    rec.onstop = function () {
+      download(slug() + '.replay.' + (mime.indexOf('mp4') > -1 ? 'mp4' : 'webm'), new Blob(chunks, { type: mime.split(';')[0] }));
+      btn.disabled = false; btn.textContent = 'Save video'; toast('Video saved');
+    };
+    var text = '', i = 0, typed = 0, del = 0, t0 = 0, caretPos = 0;
+    function draw(now) {
+      if (!t0) t0 = now;
+      var el = now - t0, rp = Math.min(TT, el * sp);
+      while (i < ops.length && ttl[i] <= rp) { text = T.apply(text, ops[i]); caretPos = ops[i][1] + ops[i][3].length; if (!ops[i][4]) typed += ops[i][3].length; del += ops[i][2]; i++; }
+      ctx.fillStyle = '#ebf0ee'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#06525c'; ctx.font = '600 44px ' + SANS; ctx.textAlign = 'left'; ctx.fillText('Typed by Hand', 80, 250);
+      ctx.fillStyle = '#2f737d'; ctx.font = '400 30px ' + MONO; ctx.textAlign = 'right'; ctx.fillText('replay ' + (sp >= 10 ? Math.round(sp) : sp.toFixed(1)) + '×', W - 80, 250); ctx.textAlign = 'left';
+      ctx.fillStyle = '#fff'; roundRect(ctx, 60, 300, W - 120, 1080, 20); ctx.fill();
+      ctx.save(); roundRect(ctx, 60, 300, W - 120, 1080, 20); ctx.clip();
+      ctx.font = '400 42px ' + SERIF; ctx.fillStyle = '#0f2a2e';
+      var shown = text.slice(0, caretPos) + '⁣' + text.slice(caretPos), lines = wrap(ctx, shown, W - 260), LH = 64, maxL = 15;
+      var cl = 0; lines.forEach(function (l, k) { if (l.indexOf('⁣') > -1) cl = k; });
+      var start = Math.max(0, Math.min(cl - maxL + 3, lines.length - maxL));
+      for (var k = start; k < Math.min(lines.length, start + maxL); k++) {
+        var y = 390 + (k - start) * LH, l = lines[k], ci = l.indexOf('⁣');
+        if (ci > -1) {
+          var a = l.slice(0, ci); ctx.fillText(a, 130, y);
+          var cx = 130 + ctx.measureText(a).width;
+          if (el < playMs || Math.floor(el / 500) % 2) { ctx.fillStyle = '#06525c'; ctx.fillRect(cx, y - 40, 4, 50); ctx.fillStyle = '#0f2a2e'; }
+          ctx.fillText(l.slice(ci + 1), cx + 2, y);
+        } else ctx.fillText(l, 130, y);
+      }
+      ctx.restore();
+      var cells = [['WRITING TIME', T.dur(s.activeMs * Math.min(1, rp / TT))], ['TYPED', T.fmtInt(typed)], ['DELETED', T.fmtInt(del)]];
+      cells.forEach(function (c, k) {
+        var x = 80 + k * 320; ctx.fillStyle = '#2f737d'; ctx.font = '500 24px ' + MONO; ctx.fillText(c[0], x, 1460);
+        ctx.fillStyle = '#06525c'; ctx.font = '500 56px ' + MONO; ctx.fillText(c[1], x, 1530);
+      });
+      if (el > playMs) {
+        var p = Math.min(1, (el - playMs) / 420), e = 1 - Math.pow(1 - p, 3);
+        drawStamp(ctx, W - 290, 1170, 160, s.verdict, .92 * e, 1.6 - .6 * e);
+      }
+      btn.textContent = 'Recording ' + Math.min(99, Math.round(el / (playMs + HOLD) * 100)) + '%';
+      if (el < playMs + HOLD) requestAnimationFrame(draw); else rec.stop();
+    }
+    rec.start(250); requestAnimationFrame(draw);
+  });
+
+  // player page saved inside every replay file
+  var PLAYER = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>__TITLE__ · replay</title>' +
+    '<style>body{margin:0;background:#ebf0ee;color:#0f2a2e;font:15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",sans-serif}main{max-width:760px;margin:0 auto;padding:24px 16px 64px}' +
+    'h1{font-size:22px;color:#06525c;margin:0 0 4px}.meta{font:13px ui-monospace,Menlo,monospace;color:#2f737d}.ok{color:#06525c}.bad{color:#9a3412}' +
+    '.bar{display:flex;gap:8px;align-items:center;margin:16px 0}button{font:inherit;border:1px solid #06525c;background:#06525c;color:#f7f9f8;border-radius:10px;padding:8px 14px;min-height:40px;cursor:pointer}' +
+    'button.g{background:#fff;color:#06525c;border-color:#cfdcda}button.g[aria-pressed=true]{border-color:#06525c}input{flex:1;accent-color:#06525c}' +
+    'pre{background:#fff;border-radius:4px;padding:40px 48px;min-height:50vh;font:19px/1.7 ui-serif,"New York",Georgia,serif;white-space:pre-wrap;word-wrap:break-word;box-shadow:0 12px 32px rgba(6,82,92,.08)}' +
+    '.c{display:inline-block;width:2px;height:1.15em;vertical-align:-.2em;background:#06525c}</style></head><body><main><h1>__TITLE__</h1><div class="meta" id="m"></div><div class="meta" id="v">Checking the record…</div>' +
+    '<div class="bar"><button id="p">Play</button><button class="g" data-s="4" aria-pressed="true">4×</button><button class="g" data-s="16">16×</button><button class="g" data-s="64">64×</button><input type="range" id="r" min="0" max="1000" value="1000" aria-label="Position"></div>' +
+    '<pre id="t"></pre><p class="meta">Recorded keystroke by keystroke with Typed by Hand. The record shows how the text was made, not where the ideas came from.</p></main>' +
+    '<script>/*CORE*/<\/script><script>var D=/*DATA*/;(function(){var T=TBH,s=T.stats(D.ops,D.text),tl=T.timeline(D.ops),tot=tl[tl.length-1]||0,pos=tot,i=0,x="",run=false,sp=4,lf=0,ca=0,pre=document.getElementById("t"),b=document.createTextNode(""),c=document.createElement("span"),a=document.createTextNode("");c.className="c";pre.append(b,c,a);' +
+    'document.getElementById("m").textContent=T.fmtInt(s.words)+" words · "+T.dur(s.activeMs)+" writing · "+s.sittings+" sitting(s) · "+T.fmtInt(s.deleted)+" deleted · "+T.fmtInt(s.pasted)+" pasted · "+s.pauses+" pauses";' +
+    'T.fingerprint(D.ops,D.text).then(function(h){var ok=h===D.fp&&s.matches,v=document.getElementById("v");v.className="meta "+(ok?"ok":"bad");v.textContent=ok?"Record intact: replay rebuilds the text, fingerprint "+h.slice(0,16)+"… matches":"Record changed after it was saved: fingerprint does not match";});' +
+    'function go(p){pos=Math.max(0,Math.min(tot,p));var n=0;while(n<tl.length&&tl[n]<=pos)n++;if(n<i){x="";i=0}while(i<n){var o=D.ops[i];x=T.apply(x,o);ca=o[1]+o[3].length;i++}b.data=x.slice(0,ca);a.data=x.slice(ca);document.getElementById("r").value=tot?pos/tot*1000:1000}' +
+    'function f(t){if(!run)return;go(pos+(t-lf)*sp);lf=t;if(pos>=tot){run=false;document.getElementById("p").textContent="Play";return}requestAnimationFrame(f)}go(tot);' +
+    'document.getElementById("p").onclick=function(){if(run){run=false;this.textContent="Play";return}if(pos>=tot){x="";i=0;go(0)}run=true;lf=performance.now();this.textContent="Pause";requestAnimationFrame(f)};' +
+    'document.getElementById("r").oninput=function(){run=false;go(this.value/1000*tot)};document.querySelectorAll("[data-s]").forEach(function(e){e.onclick=function(){sp=+e.dataset.s;document.querySelectorAll("[data-s]").forEach(function(z){z.setAttribute("aria-pressed",z===e)})}})})();<\/script></body></html>';
+
+  // start
+  if (!docs.length) newDoc();
+  open(docs[0]);
+  $('play').innerHTML = PLAY;
+  window.addEventListener('beforeunload', save);
+})();
+</script>
+</body>
+</html>

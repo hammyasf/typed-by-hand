@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en" data-type="software" data-radius="soft" data-ground="sage" data-buttons="pill" data-motion>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Typed by Hand: a writing pad that replays how you typed</title>
+<meta name="description" content="A free, open-source offline writing page: it records every keystroke on your device and shares the replay as a file, a receipt or a 9:16 video.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Typed by Hand: a writing pad that replays how you typed">
+<meta property="og:description" content="Write, then share the replay of your text being typed, typo by typo. Offline, no account, free and open source.">
+<meta property="og:image" content="https://typed-by-hand.codepost.dev/share.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#f7f9f8">
+<link rel="canonical" href="https://typed-by-hand.codepost.dev/">
+<meta name="site-kind" content="software">
+<meta name="page-type" content="software">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400..500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/system.css">
+<link rel="stylesheet" href="assets/ui/cards.css">
+<link rel="stylesheet" href="assets/motion/motion.css">
+<link rel="stylesheet" href="assets/backgrounds/backgrounds.css">
+<link rel="stylesheet" href="assets/layout/layout.css">
+<link rel="stylesheet" href="assets/icons/icon.css">
+<style>
+:root {
+  --p-bg: #f7f9f8; --p-surface: #ebf0ee; --p-ink: #06525c; --p-muted: #2f737d;
+  --p-accent: #06525c; --p-accent-ink: #f7f9f8; --p-action: #06525c; --p-action-ink: #f7f9f8;
+  --p-inv-bg: #06525c; --p-inv-surface: #205d66; --p-inv-ink: #f7f9f8; --p-inv-muted: #c1d0d2;
+  --p-inv-accent: #f7f9f8; --p-inv-accent-ink: #06525c; --p-inv-action: #f7f9f8; --p-inv-action-ink: #06525c;
+  --font-display: "Schibsted Grotesk", system-ui, sans-serif;
+  --font-text: "Schibsted Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --display-weight: 400;
+  --display-tracking: -0.035em;
+  --display-tracking-xl: -0.042em;
+  --ly-scale: 0.98;
+}
+
+  /* the sponsor button: on hover, focus or tap it retypes its own label, typo and all, then inks the heart */
+  .close__acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
+  .hand { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 20px 0 16px; border: 1.5px solid #06525c; border-radius: 999px;
+          background: #fff; color: #06525c; text-decoration: none; font: 500 15px/1 var(--font-mono); letter-spacing: .01em;
+          background-image: linear-gradient(transparent calc(100% - 9px), rgb(6 82 92 / .1) calc(100% - 9px), rgb(6 82 92 / .1) calc(100% - 8px), transparent 0);
+          box-shadow: 0 10px 22px -16px rgb(6 82 92 / .55); transition: transform .2s cubic-bezier(.22, 1, .36, 1), box-shadow .2s; -webkit-tap-highlight-color: transparent; }
+  .hand:hover { transform: translateY(-2px); box-shadow: 0 14px 26px -14px rgb(6 82 92 / .5); }
+  .hand:active { transform: translateY(0) scale(.98); }
+  .hand:focus-visible { outline: 2px solid #06525c; outline-offset: 3px; }
+  .hand__heart { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; transition: fill .25s, stroke .25s, transform .35s cubic-bezier(.34, 1.56, .64, 1); }
+  .hand.is-done .hand__heart { fill: #d1495b; stroke: #d1495b; transform: scale(1.2) rotate(-8deg); }
+  .hand__line { position: relative; white-space: nowrap; }
+  .hand__size { visibility: hidden; }
+  .hand__out { position: absolute; left: 0; top: 0; }
+  .hand__caret { display: inline-block; width: 2px; height: 1.1em; margin-left: 1px; vertical-align: -.2em; background: currentColor; opacity: 0; }
+  .hand.is-typing .hand__caret { opacity: 1; }
+  .hand.is-done .hand__caret { animation: hand-blink .5s steps(1) 3 forwards; }
+  @keyframes hand-blink { 0% { opacity: 1; } 50%, 100% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .hand, .hand__heart { transition: none; } .hand.is-done .hand__caret { animation: none; } }
+
+  /* the email gate: every get-it button opens it; the toy's link comes in the confirmation email (Kit incentive).
+     Works without script too: #gate as the URL's target shows it. */
+  .gate { width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 0; border-radius: var(--r-l, 16px);
+          background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--line, rgb(127 127 127 / .2)), 0 40px 80px -30px rgb(0 0 0 / .5); }
+  .gate::backdrop { background: rgb(0 0 0 / .55); backdrop-filter: blur(3px); }
+  .gate:target:not([open]) { display: block; position: fixed; inset: 0; margin: auto; height: fit-content; z-index: 100; }
+  .gate__in { display: grid; gap: var(--s-4); padding: var(--s-6) var(--s-5) var(--s-5); }
+  .gate h2 { font-size: var(--t-h3, 1.6rem); line-height: 1.15; padding-right: 40px; }
+  .gate p { color: var(--muted); }
+  .gate .form { grid-template-columns: minmax(0, 1fr); }
+  .gate .btn { width: 100%; justify-content: center; }
+  .gate__x { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%;
+             background: transparent; color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; text-decoration: none; }
+  .gate__x:hover { background: color-mix(in oklab, var(--ink) 10%, transparent); }
+  .gate__x:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+  .gate__fine { font-size: var(--t-small); }
+</style>
+<link rel="stylesheet" href="assets/ui/base.css">
+<script>document.documentElement.classList.add('m-enter');setTimeout(()=>document.documentElement.classList.add('m-enter-done'),700)</script>
+<script src="assets/backgrounds/backgrounds.js"></script>
+<script>document.documentElement.classList.add('mo-js');setTimeout(()=>document.documentElement.classList.add('mo-safe'),2500)</script>
+<link rel="modulepreload" href="assets/moments/moments.js">
+<link rel="modulepreload" href="assets/moments/lib.js">
+<link rel="modulepreload" href="assets/moments/iris-opens/moment.js">
+<!-- page CSS: only what sits inside a visual (the app's own UI, rebuilt as live HTML from app/index.html
+     with its own teal-on-paper tokens and its serif writing face) and the app-frame recipe -->
+<style>
+  .tb { --tb-bg: #f7f9f8; --tb-alt: #ebf0ee; --tb-ink: #06525c; --tb-muted: #2f737d; --tb-text: #0f2a2e; --tb-line: #cfdcda;
+        --tb-serif: ui-serif, "New York", "Iowan Old Style", Georgia, serif; --tb-sans: ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+        color: var(--tb-ink); font: 400 14px/1.45 var(--tb-sans); text-align: left; }
+  .tb p, .tb dl, .tb dd, .tb ul { margin: 0; padding: 0; }
+  .tb__logo { width: 22px; height: 22px; flex: none; }
+  .tb__paper { background: #fff; color: var(--tb-text); font: 400 17px/1.62 var(--tb-serif); white-space: pre-wrap; overflow-wrap: break-word; }
+  .tb__caret { display: inline-block; width: 2px; height: 1.1em; vertical-align: -.18em; margin-right: -2px; background: var(--tb-ink); }
+  .tb__mono { font: 400 12px/1.4 var(--font-mono); letter-spacing: .02em; color: var(--tb-muted); }
+
+  /* the hero's replay window */
+  .rw { bottom: -2px; display: flex; flex-direction: column; background: var(--tb-alt); border-radius: 14px 14px 0 0; box-shadow: 0 0 0 1px rgb(6 82 92 / .1), 0 24px 48px -24px rgb(6 82 92 / .35); overflow: hidden; }
+  .rw__bar { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 12px 0 16px; border-bottom: 1px solid var(--tb-line); background: var(--tb-bg); }
+  .rw__bar b { font-weight: 600; font-size: 14px; white-space: nowrap; }
+  .rw__sp { flex: 1; }
+  .rw__meta { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .rw__chip { font: 500 12px/1 var(--font-mono); padding: 6px 9px; border: 1px solid var(--tb-ink); border-radius: 8px; }
+  /* the replay's pause button: a direct child of the frame (so the kit's still ground adds none of its own), set in the window's bar */
+  .hero__window > button.rw__pause.ui-pause { top: 40px; bottom: auto; right: max(12px, calc(50% - 440px + 8px)); z-index: 3; box-shadow: none; opacity: 1; }
+  .rw__bar { padding-right: 52px; }
+  .rw__page { flex: 1; min-height: 0; margin: 16px 16px 0; border-radius: 6px 6px 0 0; overflow: hidden; }
+  .rw__page .tb__paper { height: 100%; overflow: hidden; padding: 18px 40px 40px; }
+  @media (max-width: 639px) {
+    .rw__bar { height: 44px; gap: 8px; padding: 0 48px 0 12px; } .rw__meta, .rw__chip { display: none; }
+    .hero__window > button.rw__pause.ui-pause { top: 22px; right: 22px; }
+    .rw__page { margin: 10px 10px 0; } .rw__page .tb__paper { padding: 12px 16px 40px; font-size: 15px; line-height: 1.55; }
+  }
+
+  /* the app window (#record): the app's header, the paper, the Live panel */
+  .app.ui { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); margin-top: var(--s-7); background: var(--tb-alt); border: 1px solid var(--tb-line); border-radius: 16px; box-shadow: 0 24px 48px -32px rgb(6 82 92 / .4); overflow: hidden; }
+  .app__top { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 16px; background: var(--tb-bg); border-bottom: 1px solid var(--tb-line); }
+  .app__top b { font-weight: 600; font-size: 15px; } .app__top .doc { color: var(--tb-text); margin-left: 12px; }
+  .app__top .ctl { border: 1px solid var(--tb-line); border-radius: 8px; padding: 6px 12px; background: #fff; white-space: nowrap; }
+  .app__top .saved { white-space: nowrap; }
+  .app__body { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); min-height: 0; }
+  .app__pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+  .app__pane--page { padding: 28px 48px 0; }
+  .app__pane--page .tb__paper { height: 100%; padding: 36px 40px 0 64px; border-radius: 6px 6px 0 0; box-shadow: 0 10px 30px rgb(6 82 92 / .07); background: linear-gradient(90deg, transparent 47px, #f3c4c4 47px 48px, transparent 48px) #fff; }
+  .app__pane--live { background: var(--tb-bg); border-left: 1px solid var(--tb-line); padding: 18px 20px 0; display: grid; align-content: start; gap: 16px; }
+  .app__pane::after { content: ""; position: absolute; inset: auto 0 0 0; height: 56px; background: linear-gradient(transparent, var(--tb-alt)); pointer-events: none; }
+  .app__pane--live::after { background: linear-gradient(transparent, var(--tb-bg)); }
+  .seg3 { display: grid; grid-template-columns: repeat(3, 1fr); padding: 4px; border-radius: 99px; background: var(--tb-alt); text-align: center; }
+  .seg3 span { padding: 8px 0; border-radius: 99px; } .seg3 .on { background: var(--tb-ink); color: var(--tb-bg); }
+  .tbkv { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .tbkv div { padding: 8px 0 10px; border-top: 1px solid var(--tb-line); }
+  .tbkv dd { font: 400 20px/1.2 var(--font-mono); color: var(--tb-ink); margin-top: 2px; }
+  .cpm { display: flex; align-items: end; gap: 4px; height: 56px; border-bottom: 1px solid var(--tb-line); margin-top: 8px; }
+  .cpm i { width: 14px; background: var(--tb-ink); } .cpm i + i { background: #3f8f99; }
+  .tbchecks { list-style: none; display: grid; gap: 7px; }
+  .tbchecks li { display: flex; gap: 10px; align-items: center; color: var(--tb-text); }
+  .tbchecks svg { width: 18px; height: 18px; flex: none; }
+  @media (min-width: 1024px) and (max-width: 1279px) { .app__body { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); } .app__pane--page { padding: 24px 24px 0; } }
+  @media (max-width: 1023px) { .app__top .ctl:first-of-type, .app__top .doc { display: none; } .app__pane--page { padding: 20px 20px 0; } .app__pane--page .tb__paper { padding: 24px 24px 0 48px; background: linear-gradient(90deg, transparent 31px, #f3c4c4 31px 32px, transparent 32px) #fff; } }
+  @media (max-width: 639px) { .cpmw, .tbchecks li:nth-child(n+3) { display: none; } }
+  @media (max-width: 767px) { .app__body { grid-template-columns: minmax(0, 1fr); } .app__pane--page { display: none; } .app__pane--live { border-left: 0; } .app__top .ctl { display: none; } }
+
+  /* the replay file (#file), as the exported page draws it */
+  .rf { background: var(--tb-alt); border: 1px solid var(--tb-line); border-radius: 16px; padding: 24px 24px 0; display: grid; gap: 10px; overflow: hidden; box-shadow: 0 24px 48px -32px rgb(6 82 92 / .4); }
+  .rf__title { font: 700 20px/1.2 var(--tb-sans); }
+  .rf__ok { color: #06525c; } .rf__bad { color: #9a3412; }
+  .rf__bar { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+  .rf__bar span { font: 500 13px/1 var(--tb-sans); padding: 9px 12px; border-radius: 10px; background: #fff; border: 1px solid var(--tb-line); }
+  .rf__bar span:first-child { background: var(--tb-ink); color: #f7f9f8; border-color: var(--tb-ink); }
+  .rf__bar i { flex: 1; height: 6px; border-radius: 99px; background: var(--tb-ink); }
+  .rf .tb__paper { margin-top: 6px; padding: 24px 28px 28px; border-radius: 6px 6px 0 0; min-height: 280px; height: clamp(280px, 100svh - 520px, 400px); font-size: 16px; }
+  @media (max-width: 1023px) { .rf .tb__paper { height: 240px; min-height: 0; } }
+  /* secondary pill stood 1.14:1 off the ground (read as switched off): give it an ink outline */
+  html[data-buttons] .btn--secondary { border-color: color-mix(in oklab, var(--ink) 45%, transparent); }
+  .rf mark { background: #fde2d3; color: #9a3412; border-radius: 2px; }
+  .rf-act { margin-top: var(--s-5); }
+
+  /* the 9:16 export (#video): the app's own clip, rising from the frame's foot */
+  .vid { width: min(300px, 70%); aspect-ratio: 9 / 16; border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 1px rgb(6 82 92 / .12), 0 24px 48px -24px rgb(6 82 92 / .45); background: #ebf0ee; }
+  .vid video { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+  /* receipts as images, at their own pixel size */
+  .shot { display: block; width: 100%; height: auto; border-radius: 14px; box-shadow: 0 0 0 1px rgb(6 82 92 / .1), 0 24px 48px -28px rgb(6 82 92 / .4); }
+  .price-fig { margin-top: var(--s-6); }
+  @media (min-width: 1024px) { #receipt .frame--split, #video .frame--split, #limits .frame--split, #get .frame--split { --ratio: 100%; } }
+  @media (min-width: 1024px) and (max-width: 1279px) { #questions { --h: 2; } }
+  .close__word { font-size: min(11.8vw, 170px); line-height: 1.04; }
+  .hero--centred .hero__lead { color: var(--ink); }
+  .price-fig .t-stat { margin: 0; }
+  .faq-more { margin-top: var(--s-5); }
+  @media (max-width: 639px) { .faq-more > .span-5 { margin-bottom: var(--s-6); } }
+  /* no phone action bar on this page: the nav's button moves into the menu sheet under 640, as system.css does with one */
+  @media (max-width: 639px) { .nav:not(.is-open) .nav__actions { display: none; } .nav:not(.is-open) .nav__bar > .nav__actions + .nav__toggle { margin-left: auto; } .nav:not(.is-open) .nav__bar { justify-content: space-between; } }
+  .bw { width: 760px; background: var(--tb-alt); border: 1px solid var(--tb-line); border-radius: 12px; overflow: hidden; box-shadow: 0 24px 48px -28px rgb(6 82 92 / .4); }
+  .bw__bar { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px; background: #e3eae8; border-bottom: 1px solid var(--tb-line); }
+  .bw__bar i { width: 10px; height: 10px; border-radius: 50%; background: #c6d3d1; }
+  .bw__url { margin-left: 12px; padding: 5px 12px; border-radius: 99px; background: #fff; }
+  .bw__top { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; background: var(--tb-bg); border-bottom: 1px solid var(--tb-line); }
+  .bw__top b { font-weight: 600; } .bw__top .doc { color: var(--tb-text); margin-left: 8px; }
+  .bw__top .ctl { border: 1px solid var(--tb-line); border-radius: 8px; padding: 5px 10px; background: #fff; }
+  .bw__page { padding: 24px 32px 0; } .bw__page .tb__paper { height: 300px; padding: 32px 36px; border-radius: 6px; box-shadow: 0 10px 30px rgb(6 82 92 / .07); }
+  .tb .bw__foot { display: flex; justify-content: space-between; padding: 14px 16px; margin-top: 24px; border-top: 1px solid var(--tb-line); background: var(--tb-bg); font-size: 13px; color: var(--tb-muted); }
+  .zip { max-width: 420px; background: var(--tb-bg); border: 1px solid var(--tb-line); border-radius: 12px; overflow: hidden; }
+  .zip__row { display: flex; align-items: center; gap: 10px; padding: 14px 16px; }
+  .zip__row b { font-weight: 600; } .tb .zip__foot { padding: 10px 16px; border-top: 1px solid var(--tb-line); background: var(--tb-alt); font-size: 13px; color: var(--tb-muted); }
+</style>
+<script src="analytics.js" defer></script>
+</head>
+<body>
+<!-- plan line 1: software (page type software, site-kind software)
+     deal: hero centred, nav nav-centre, footer footer-columns, close close-word, rhythm surface-pairs (#file),
+           buttons pill, mark: the client's own logo (the app's icon) in place of the dealt dots, lit ground sage,
+           effect grain-gradient held still in the hero frame; palette teal-on-paper (the app's own paper and ink);
+           type schibsted (Schibsted Grotesk + JetBrains Mono), radius soft
+     moment: iris-opens on #file (the replay file section on the surface ground)
+     motion: the hero entrance; the hero window replays the real recorded session keystroke by keystroke (pause button);
+             #file plays its replay and changes one letter on a click; #video plays the app's own export (pause button) -->
+
+<header class="nav nav--centre">
+  <div class="wrap nav__bar">
+    <a class="skip-link" href="#top">Skip to content</a>
+    <a class="nav__logo" href="#top"><svg class="tb__logo" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="14" fill="#06525c"/><rect x="14" y="16" width="36" height="30" rx="6" fill="none" stroke="#f7f9f8" stroke-width="4"/><path d="M24 24v14M40 24v14M24 31h16M18 52h28" stroke="#f7f9f8" stroke-width="4" stroke-linecap="round"/></svg>Typed by Hand</a>
+    <nav class="nav__links" aria-label="Main">
+      <div class="nav__item"><a class="nav__link" href="#record">Record</a></div>
+      <div class="nav__item"><a class="nav__link" href="#receipt">Receipt</a></div>
+      <div class="nav__item"><a class="nav__link" href="#file">File</a></div>
+      <div class="nav__item"><a class="nav__link" href="#video">Video</a></div>
+      <div class="nav__item"><a class="nav__link" href="#get">Get it</a></div>
+    </nav>
+    <div class="nav__actions">
+      <!-- opens the email gate (#gate) -->
+      <a class="btn btn--primary" href="#gate">Get Typed by Hand</a>
+    </div>
+    <button class="nav__toggle" type="button" aria-expanded="false" aria-label="Menu">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 5h14M2 13h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero hero--centred" data-enter aria-labelledby="hero-h">
+    <div class="wrap"><div class="hero-text">
+      <div class="hero__c">
+        <h1 id="hero-h">A writing pad with a typing replay</h1>
+        <p class="hero__lead">Typed by Hand records every keystroke of your page on your device, then plays it back typo by typo. Share a replay file, a receipt or a 9:16 video. Free and open source.</p>
+        <div class="btn-row">
+          <!-- opens the email gate (#gate) -->
+          <a class="btn btn--primary" href="#gate">Get Typed by Hand<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a>
+          <a class="btn btn--secondary" href="#record">See the live record</a>
+        </div>
+      </div>
+      <div class="hero__window" data-fx="grain-gradient" data-fx-seed="11" data-fx-params='{"speed":0,"grainMotion":0}'>
+        <button class="ui-pause loop-pause rw__pause" type="button" aria-label="Pause animation" title="Pause animation" data-pause hidden><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4.25" y="3.25" width="2.75" height="9.5" rx="0.9"/><rect x="9" y="3.25" width="2.75" height="9.5" rx="0.9"/></svg></button>
+        <div class="ly-piece rw tb" data-replay="hero">
+          <div class="rw__bar">
+            <svg class="tb__logo" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="14" fill="#06525c"/><rect x="14" y="16" width="36" height="30" rx="6" fill="none" stroke="#f7f9f8" stroke-width="4"/><path d="M24 24v14M40 24v14M24 31h16M18 52h28" stroke="#f7f9f8" stroke-width="4" stroke-linecap="round"/></svg>
+            <b aria-hidden="true">Follow-up note</b><span class="rw__sp"></span>
+            <span class="rw__meta tb__mono" data-meta aria-hidden="true">56 words · 299 typed · 11 deleted · 0 pasted</span>
+            <span class="rw__chip" aria-hidden="true">4×</span>
+          </div>
+          <div class="rw__page" role="img" aria-label="A recorded note replaying keystroke by keystroke at four times speed: Dear Ms. Patel, thank you for the interview on Tuesday, with its typos deleted and retyped and its pauses, ending Best, Sam">
+            <div class="tb__paper" data-paper aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="section" id="record" aria-labelledby="record-h">
+    <div class="wrap">
+      <div class="grid grid--top">
+        <h2 class="span-5" id="record-h">Live typing record beside every page</h2>
+        <p class="span-6 start-7">Each insert, deletion and paste is logged as you write. The Live panel counts writing time, words, typed, deleted, pasted and pauses, and charts characters per minute. <a class="link" href="#receipt">See the receipt</a></p>
+      </div>
+      <div class="ui app tb fill" role="img" aria-label="Typed by Hand with the follow-up note open on its paper page, and the Live panel: 1 minute 12 seconds of writing, 56 words, 299 typed, 11 deleted, 0 pasted, 3 pauses, a chart of characters per minute and five passed checks">
+        <div class="app__top" aria-hidden="true">
+          <svg class="tb__logo" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="14" fill="#06525c"/><rect x="14" y="16" width="36" height="30" rx="6" fill="none" stroke="#f7f9f8" stroke-width="4"/><path d="M24 24v14M40 24v14M24 31h16M18 52h28" stroke="#f7f9f8" stroke-width="4" stroke-linecap="round"/></svg>
+          <b>Typed by Hand</b><span class="doc">Follow-up note</span><span class="rw__sp"></span>
+          <span class="ctl">Follow-up note ▾</span><span class="ctl">New page</span><span class="saved tb__mono">● SAVED</span>
+        </div>
+        <div class="app__body" aria-hidden="true">
+          <div class="app__pane app__pane--page"><div class="tb__paper" data-final></div></div>
+          <div class="app__pane app__pane--live">
+            <div class="seg3"><span class="on">Live</span><span>Replay</span><span>Receipt</span></div>
+            <dl class="tbkv">
+              <div><dt class="tb__mono">WRITING TIME</dt><dd>1m 12s</dd></div><div><dt class="tb__mono">WORDS</dt><dd>56</dd></div>
+              <div><dt class="tb__mono">TYPED</dt><dd>299</dd></div><div><dt class="tb__mono">DELETED</dt><dd>11</dd></div>
+              <div><dt class="tb__mono">PASTED</dt><dd>0</dd></div><div><dt class="tb__mono">PAUSES</dt><dd>3</dd></div>
+            </dl>
+            <div class="cpmw"><p class="tb__mono">CHARACTERS PER MINUTE OF WRITING</p><div class="cpm"><i style="height:100%"></i><i style="height:22%"></i></div></div>
+            <div style="display:grid;gap:8px">
+              <p class="tb__mono">WHAT THE RECORD SHOWS</p>
+              <ul class="tbchecks">
+                <li><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#e3f0ec"/><path d="M6 10.5l2.6 2.6L14 7.6" fill="none" stroke="#06525c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Replay rebuilds the final text exactly</li>
+                <li><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#e3f0ec"/><path d="M6 10.5l2.6 2.6L14 7.6" fill="none" stroke="#06525c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Nothing pasted</li>
+                <li><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#e3f0ec"/><path d="M6 10.5l2.6 2.6L14 7.6" fill="none" stroke="#06525c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>4% of typed characters later deleted</li>
+                <li><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#e3f0ec"/><path d="M6 10.5l2.6 2.6L14 7.6" fill="none" stroke="#06525c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>3 pauses longer than 2 s</li>
+                <li><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#e3f0ec"/><path d="M6 10.5l2.6 2.6L14 7.6" fill="none" stroke="#06525c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Typing speed varies like a person thinking</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="receipt" aria-labelledby="receipt-h">
+    <div class="wrap">
+      <div class="grid grid--top">
+        <div class="span-5">
+          <h2 id="receipt-h">Receipt with 5 checks and a stamp</h2>
+          <p class="t-lead" style="margin-top: var(--s-5)">The receipt sums up the record and runs five checks. Its stamp reads Typed by hand only when all five pass; otherwise Check the replay or Mostly pasted.</p>
+          <p style="margin-top: var(--s-5)">The checks: the replay rebuilds the exact text, the share pasted, the share deleted, pauses over 2 s and the typing rhythm. Save it as a PNG to attach or post.</p>
+          <p style="margin-top: var(--s-5)"><a class="link" href="#file">See the replay file</a></p>
+        </div>
+        <div class="frame frame--split span-6 start-7">
+          <div class="stage stage--fade-b"><div class="at-rise to-edge" style="--w: 420px; --ay: 48px">
+            <img class="shot" loading="lazy" src="media/receipt.png" width="840" height="1190" alt="The receipt for the follow-up note: 56 words, 1 minute 12 seconds of writing, 299 characters typed, 11 deleted, 0 pasted, 3 pauses over 2 seconds, 50 words a minute, five passed checks and the round stamp Typed by hand" data-source="client" data-subject="the app's own receipt export">
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section ground-surface" id="file" aria-labelledby="file-h" data-moment="iris-opens" data-moment-opts='{"from": "base"}'>
+    <div class="wrap">
+      <div class="grid grid--top">
+        <div class="span-5">
+          <h2 id="file-h">Replay file that checks itself</h2>
+          <p class="t-lead" style="margin-top: var(--s-5)">Save replay file writes one HTML page with the whole record and a SHA-256 fingerprint. Anyone opens it in a browser, with no login and no link that expires.</p>
+          <p style="margin-top: var(--s-5)">Change one letter of this note and the file says the record no longer matches.</p>
+          <button class="btn btn--secondary rf-act" type="button" data-edit aria-pressed="false">Change one letter</button>
+        </div>
+        <div class="span-6 start-7">
+          <div class="rf tb" data-replay="file">
+            <p class="rf__title">Follow-up note</p>
+            <p class="tb__mono">56 words · 1m 12s writing · 1 sitting(s) · 11 deleted · 0 pasted · 3 pauses</p>
+            <p class="tb__mono rf__ok" data-verdict role="status">Record intact: replay rebuilds the text, fingerprint dde0af25a5b6d4a0… matches</p>
+            <div class="rf__bar" aria-hidden="true"><span>Play</span><span>4×</span><span>16×</span><span>64×</span><i></i></div>
+            <div class="tb__paper" data-paper></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="video" aria-labelledby="video-h">
+    <div class="wrap">
+      <div class="grid grid--top">
+        <div class="span-5">
+          <h2 id="video-h">9:16 video of the page writing itself</h2>
+          <p class="t-lead" style="margin-top: var(--s-5)">Save video records a 1080 by 1920 clip of your page being typed, sized for a story or a reel.</p>
+          <p style="margin-top: var(--s-5)">MP4 in Chrome, tested. Other browsers save MP4 or WebM, untested.</p>
+          <p style="margin-top: var(--s-5)"><a class="link" href="#limits">See what a replay cannot show</a></p>
+        </div>
+        <div class="frame frame--split frame--lit span-6 start-7" data-ui-pause-host>
+          <div class="stage stage--fade-b"><div class="at-rise to-edge" style="--w: 300px; --ay: 40px">
+            <div class="vid"><video data-vid muted playsinline loop preload="metadata" poster="media/replay-9x16.jpg" aria-label="The app's own 9:16 export: the follow-up note types itself, then the Typed by hand stamp lands beside the signature"><source src="media/replay-9x16.mp4" type="video/mp4"></video></div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="limits" aria-labelledby="limits-h">
+    <div class="wrap">
+      <div class="grid grid--top">
+        <div class="span-5">
+          <h2 id="limits-h">What a replay cannot show</h2>
+          <p class="t-lead" style="margin-top: var(--s-5)">Typed by Hand shows how a text was made. It cannot show where the ideas came from.</p>
+          <p style="margin-top: var(--s-5)">A patient person can retype someone else's text by hand, and the rhythm check only flags very even typing.</p>
+          <p style="margin-top: var(--s-5)">Pasting it does catch. In a paste test, 84 of 94 characters arrived by paste, and the stamp read Mostly pasted.</p>
+        </div>
+        <div class="frame frame--split span-6 start-7">
+          <div class="stage stage--fade-b"><div class="at-rise to-edge" style="--w: 360px; --ay: 48px">
+            <img class="shot" loading="lazy" src="media/receipt-pasted.png" width="360" height="472" alt="The receipt of the paste test: 84 characters pasted (89%), the checks marked look, and the red stamp Mostly pasted with the line Most of this text arrived by paste" data-source="client" data-subject="the app's own receipt in the paste test">
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section g2m" id="questions" aria-labelledby="questions-h">
+    <div class="wrap">
+      <div class="grid grid--top">
+        <div class="span-5">
+          <h2 id="questions-h">Questions</h2>
+          <p class="t-lead" style="margin-top: var(--s-5)">About the record, the file and browsers.</p>
+        </div>
+        <div class="faq span-6 start-7">
+          <div class="faq__item"><h3>Can't someone retype AI text by hand?</h3><p>Yes. A patient person can fake a replay. It shows process, not origin, and the app says so.</p></div>
+          <div class="faq__item"><h3>Where is my writing stored?</h3><p>In your browser's local storage on your device. The app makes no network requests.</p></div>
+          <div class="faq__item"><h3>What happens to replay records if I clear my browser?</h3><p>Records live in the browser that opened the file. Save a replay file to keep one.</p></div>
+        </div>
+      </div>
+      <div class="grid grid--top faq-more">
+        <div class="span-5">
+          <div class="zip tb" role="img" aria-label="The download: TypedByHand.zip holding index.html, 46 KB, which saves in your browser and uploads nothing">
+            <div class="zip__row" aria-hidden="true"><svg class="tb__logo" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="14" fill="#06525c"/><rect x="14" y="16" width="36" height="30" rx="6" fill="none" stroke="#f7f9f8" stroke-width="4"/><path d="M24 24v14M40 24v14M24 31h16M18 52h28" stroke="#f7f9f8" stroke-width="4" stroke-linecap="round"/></svg><b>TypedByHand.zip</b><span class="rw__sp"></span><span class="tb__mono">index.html · 46 KB</span></div>
+            <p class="zip__foot" aria-hidden="true">Saved in this browser. Nothing is uploaded.</p>
+          </div>
+        </div>
+        <div class="faq span-6 start-7">
+          <div class="faq__item"><h3>What does the replay file's fingerprint do?</h3><p>It is a SHA-256 of the full record and text. If either changes after export, the replay file says the record no longer matches.</p></div>
+          <div class="faq__item"><h3>Can one writing pad keep several pages?</h3><p>Yes. Each page has its own record, and Copy text copies a page in one click.</p></div>
+          <div class="faq__item"><h3>Which browsers does Typed by Hand work in?</h3><p>Tested in Chrome on macOS. Safari, Edge and Firefox are not yet tested.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="get" aria-labelledby="get-h">
+    <div class="wrap">
+      <div class="grid grid--top">
+        <div class="span-5">
+          <h2 id="get-h">Typed by Hand is free, and so is its code</h2>
+          <p class="t-lead" style="margin-top: var(--s-5)">No account. Open it in your browser, or download the one HTML file and it runs offline.</p>
+          <p style="margin-top: var(--s-5)">The code is open under AGPL-3.0: read it, change it, run your own copy.</p>
+          <!-- APP_LINK, DOWNLOAD_LINK, GITHUB_LINK -->
+          <p style="margin-top: var(--s-5)"><a class="link" href="#gate">Get it by email</a> &middot; <a class="link" href="https://github.com/hammyasf/typed-by-hand">Read the code</a></p>
+        </div>
+        <div class="frame frame--split frame--lit span-6 start-7">
+          <div class="stage stage--fade-b"><div class="at-corner to-edge" style="--ax: 48px; --ay: 48px">
+            <div class="bw tb" role="img" aria-label="Typed by Hand opened from its file in a browser: an untitled page ready to write on, and the line Saved in this browser. Nothing is uploaded.">
+              <div class="bw__bar" aria-hidden="true"><i></i><i></i><i></i><span class="bw__url tb__mono">file:///…/TypedByHand/index.html</span></div>
+              <div class="bw__top" aria-hidden="true"><svg class="tb__logo" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="14" fill="#06525c"/><rect x="14" y="16" width="36" height="30" rx="6" fill="none" stroke="#f7f9f8" stroke-width="4"/><path d="M24 24v14M40 24v14M24 31h16M18 52h28" stroke="#f7f9f8" stroke-width="4" stroke-linecap="round"/></svg><b>Typed by Hand</b><span class="doc">Untitled page</span><span class="rw__sp"></span><span class="ctl">New page</span><span class="tb__mono">● READY</span></div>
+              <div class="bw__page" aria-hidden="true"><div class="tb__paper"><span class="tb__caret"></span></div></div>
+              <p class="bw__foot" aria-hidden="true"><span>Saved in this browser. Nothing is uploaded.</span><span>0 edits recorded on this page</span></p>
+            </div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer closing" id="contact" aria-labelledby="close-h">
+  <div class="wrap">
+    <div class="closing__cta close--word">
+      <div class="section-head--split">
+        <div><h2 id="close-h">Write your next page with a replay</h2><p class="t-lead">Free. One HTML file, offline, no account.</p><p style="margin-top: var(--s-4)"><a class="link" href="#gate">Get the next free toy by email</a></p></div>
+        <div class="close__acts">
+        <!-- opens the email gate (#gate) -->
+        <a class="btn btn--primary" href="#gate">Get Typed by Hand<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a>
+        <a class="hand" href="https://github.com/sponsors/hammyasf" aria-label="Sponsor on GitHub: support Typed by Hand">
+          <svg class="hand__heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.2-4.4-9.2-8.9C1.4 8.4 3.4 5 6.8 5c2 0 3.5 1.1 5.2 3 1.7-1.9 3.2-3 5.2-3 3.4 0 5.4 3.4 4 6.6-2 4.5-9.2 8.9-9.2 8.9z"/></svg>
+          <span class="hand__line" aria-hidden="true"><span class="hand__size">Sponsor on GitHub</span><span class="hand__out"><span class="hand__text">Sponsor on GitHub</span><span class="hand__caret"></span></span></span>
+        </a>
+        </div>
+      </div>
+      <p class="close__word" aria-hidden="true">Typed by Hand</p>
+    </div>
+    <div class="closing__links">
+      <div class="grid">
+        <div class="span-4 stack-4">
+          <a class="nav__logo" href="#top"><svg class="tb__logo" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="14" fill="#06525c"/><rect x="14" y="16" width="36" height="30" rx="6" fill="none" stroke="#f7f9f8" stroke-width="4"/><path d="M24 24v14M40 24v14M24 31h16M18 52h28" stroke="#f7f9f8" stroke-width="4" stroke-linecap="round"/></svg>Typed by Hand</a>
+          <p class="footer__lede">A writing pad that records how you wrote.</p>
+        </div>
+        <div class="span-2 start-9 footer__col"><h3>Product</h3><ul><li><a href="#record">Live record</a></li><li><a href="#receipt">Receipt</a></li><li><a href="#file">Replay file</a></li><li><a href="#video">Video</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Get it</h3><ul><li><a href="#gate">Get it</a></li><li><a href="https://github.com/hammyasf/typed-by-hand">Source code</a></li><li><a href="#gate">Newsletter</a></li><li><a href="https://github.com/sponsors/hammyasf">Sponsor on GitHub</a></li><li><a href="#questions">Questions</a></li></ul></div>
+      </div>
+      <div class="footer__legal">
+        <span>&copy; 2026 Typed by Hand. Code under AGPL-3.0; the name and logo are reserved. This page counts visits with PostHog, without cookies; the app itself has no analytics.</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+<script src="replay-data.js"></script>
+<dialog class="gate" id="gate" aria-labelledby="get-h">
+  <div class="gate__in">
+    <a class="gate__x" href="#" aria-label="Close">&times;</a>
+    <h2 id="get-h">Get Typed by Hand by email</h2>
+    <p>Typed by Hand is free. Write your email, then click Confirm in the email we send: Typed by Hand opens right away. You also get the next free toy when it ships; unsubscribe in one click.</p>
+    <!-- Kit form "Typed by Hand" (10243141); confirm redirects to the app -->
+    <form class="form" action="https://app.kit.com/forms/10243141/subscriptions" method="post" data-endpoint="https://app.kit.com/forms/10243141/subscriptions"
+          data-sent="Check your inbox and click Confirm: Typed by Hand opens right away." data-sending="Sending" novalidate>
+      <div class="field"><label for="get-email">Email</label>
+        <input id="get-email" name="email_address" type="email" autocomplete="email" required aria-describedby="get-email-err">
+        <p class="field__error" id="get-email-err" hidden>Write an email address with an @, like name@example.com.</p></div>
+      <button class="btn btn--primary" type="submit">Send me Typed by Hand</button>
+      <p class="form__status" data-form-status></p>
+    </form>
+    <p class="gate__fine">One email per new toy, never shared.</p>
+  </div>
+</dialog>
+
+<script type="module" src="assets/system.js"></script>
+<script type="module" src="assets/motion/motion.js"></script>
+<script type="module" src="assets/layout/layout.js"></script>
+<script type="module">
+  // The app's own replay (src/core.js via replay-data.js: TBH and the real record D of the follow-up note).
+  // Every picture is written in its finished state first, so without script and under reduced motion the page stands.
+  import { pausable } from './assets/ui/ui.js';
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const T = window.TBH, D = window.D;
+  if (T && D) {
+    const tl = T.timeline(D.ops), TOT = tl[tl.length - 1] || 0;
+    const words = s => (s.match(/\S+/g) || []).length;
+    document.querySelectorAll('[data-final]').forEach(el => { el.textContent = D.text; });
+
+    // a paper that shows the text up to `pos` ms of replay clock, with the caret and the running counts
+    function paper(root, meta) {
+      const el = root.querySelector('[data-paper]');
+      const a = document.createTextNode(''), c = document.createElement('span'), b = document.createTextNode('');
+      c.className = 'tb__caret'; el.replaceChildren(a, c, b);
+      let i = 0, x = '', ca = 0, n = { typed: 0, del: 0, paste: 0 };
+      const reset = () => { i = 0; x = ''; ca = 0; n = { typed: 0, del: 0, paste: 0 }; };
+      return {
+        el, reset,
+        to(pos, text) {
+          let k = 0; while (k < tl.length && tl[k] <= pos) k++;
+          if (k < i) reset();
+          while (i < k) { const o = D.ops[i]; x = T.apply(x, o); ca = o[1] + o[3].length; n.del += o[2]; if (o[4]) n.paste += o[3].length; else n.typed += o[3].length; i++; }
+          const s = text == null ? x : text;
+          a.data = s.slice(0, ca); b.data = s.slice(ca);
+          if (meta) meta.textContent = `${words(x)} words · ${n.typed} typed · ${n.del} deleted · ${n.paste} pasted`;
+          // follow the caret, like the editor does, so the line being typed stays above the frame's fade
+          const room = el.clientHeight * (innerWidth < 640 ? .62 : .56);
+          el.scrollTop = Math.max(0, c.offsetTop - room);
+        },
+      };
+    }
+
+    /* the hero: the whole session at 4x, long pauses capped at 1.2 s as the app does, a 3 s rest, then again */
+    const hero = document.querySelector('[data-replay="hero"]');
+    if (hero) {
+      const p = paper(hero, hero.querySelector('[data-meta]'));
+      p.to(TOT);
+      if (!still) {
+        const SPEED = 4, REST = 3000, btn = document.querySelector('.hero__window > [data-pause]');
+        let pos = 0, last = performance.now(), paused = false, rest = 0;
+        p.reset(); p.to(0);
+        const tick = t => {
+          const dt = t - last; last = t;
+          if (!paused && !document.hidden) {
+            if (pos >= TOT) { rest += dt; if (rest > REST) { rest = 0; pos = 0; p.reset(); p.to(0); } }
+            else { pos = Math.min(TOT, pos + dt * SPEED); p.to(pos); }
+          }
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+        const ICON_PAUSE = btn.innerHTML, ICON_PLAY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.25 3.7v8.6c0 .62.68 1 1.2.66l6.5-4.3c.47-.31.47-1 0-1.32l-6.5-4.3c-.52-.34-1.2.04-1.2.66Z"/></svg>';
+        btn.hidden = false;
+        btn.addEventListener('click', () => {
+          paused = !paused; const l = `${paused ? 'Play' : 'Pause'} animation`;
+          btn.innerHTML = paused ? ICON_PLAY : ICON_PAUSE; btn.setAttribute('aria-label', l); btn.title = l; btn.classList.toggle('is-paused', paused);
+        });
+      }
+    }
+
+    /* the replay file: it checks its own fingerprint the way the exported file does; one letter changed breaks it */
+    const file = document.querySelector('[data-replay="file"]'), edit = document.querySelector('[data-edit]');
+    if (file && edit) {
+      const p = paper(file), verdict = file.querySelector('[data-verdict]');
+      const AT = D.text.indexOf('Tuesday') + 5, EDITED = D.text.slice(0, AT) + 'e' + D.text.slice(AT + 1);
+      const s = T.stats(D.ops, D.text);
+      p.to(TOT);
+      const check = async text => {
+        const h = await T.fingerprint(D.ops, text), ok = h === D.fp && s.matches && text === D.text;
+        verdict.className = 'tb__mono ' + (ok ? 'rf__ok' : 'rf__bad');
+        verdict.textContent = ok ? `Record intact: replay rebuilds the text, fingerprint ${h.slice(0, 16)}… matches` : 'Record changed after it was saved: fingerprint does not match';
+      };
+      check(D.text);
+      edit.addEventListener('click', () => {
+        const on = edit.getAttribute('aria-pressed') !== 'true';
+        edit.setAttribute('aria-pressed', String(on));
+        edit.textContent = on ? 'Put the letter back' : 'Change one letter';
+        const el = p.el;
+        if (on) { el.replaceChildren(document.createTextNode(EDITED.slice(0, AT)), Object.assign(document.createElement('mark'), { textContent: 'e' }), document.createTextNode(EDITED.slice(AT + 1))); }
+        else { p.reset(); const q = paper(file); q.to(TOT); }
+        check(on ? EDITED : D.text);
+      });
+    }
+  }
+
+  /* the 9:16 export plays on its own, muted, with the kit's pause button; reduced motion keeps the poster */
+  const vid = document.querySelector('[data-vid]');
+  if (vid && !still) {
+    vid.play().catch(() => {});
+    pausable(vid.closest('[data-ui-pause-host]'), { pause: () => vid.pause(), resume: () => vid.play().catch(() => {}) });
+  }
+</script>
+
+<script>
+  // sponsor button: retypes "Sponsor on GitHub" with one typo it backspaces, then inks the heart.
+  (() => {
+    const btn = document.querySelector('.hand'); if (!btn) return;
+    const out = btn.querySelector('.hand__text'), FULL = 'Sponsor on GitHub', still = matchMedia('(prefers-reduced-motion: reduce)');
+    // the keystrokes: type "Sponsro", two backspaces, then the rest
+    const keys = [...'Sponsro', '\b', '\b', ...'or on GitHub'];
+    let timer = 0, busy = false;
+    const done = () => { busy = false; btn.classList.remove('is-typing'); btn.classList.add('is-done'); };
+    const run = () => {
+      if (busy) return;
+      clearTimeout(timer); btn.classList.remove('is-done');
+      if (still.matches) { out.textContent = FULL; btn.classList.add('is-done'); return; }
+      busy = true; out.textContent = ''; btn.classList.add('is-typing');
+      let i = 0;
+      const next = () => {
+        if (i >= keys.length) return done();
+        const k = keys[i++];
+        out.textContent = k === '\b' ? out.textContent.slice(0, -1) : out.textContent + k;
+        const pause = k === 'o' && i === 7 ? 220 : k === '\b' ? 90 : 38 + Math.random() * 46;
+        timer = setTimeout(next, pause);
+      };
+      next();
+    };
+    const reset = () => { clearTimeout(timer); busy = false; btn.classList.remove('is-typing', 'is-done'); out.textContent = FULL; };
+    btn.addEventListener('pointerenter', run); btn.addEventListener('focus', run); btn.addEventListener('touchstart', run, { passive: true });
+    btn.addEventListener('pointerleave', reset); btn.addEventListener('blur', reset);
+  })();
+</script>
+
+<script>
+  // email gate: links to #get open the dialog (focus inside, Esc closes); without script the :target rule shows it
+  (() => {
+    const gate = document.getElementById('gate'); if (!gate || !gate.showModal) return;
+    const open = e => { e && e.preventDefault(); if (!gate.open) gate.showModal(); gate.querySelector('input[type="email"]').focus(); };
+    document.addEventListener('click', e => { const a = e.target.closest('a[href="#gate"]'); if (a) open(e); });
+    gate.querySelector('.gate__x').addEventListener('click', e => { e.preventDefault(); gate.close(); if (location.hash === '#gate') history.replaceState(null, '', location.pathname + location.search); });
+    gate.addEventListener('click', e => { if (e.target === gate) gate.close(); });
+    if (location.hash === '#gate') open();
+  })();
+</script>
+</body>
+</html>
